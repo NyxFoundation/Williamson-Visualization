@@ -1,7 +1,8 @@
-import React, { useEffect, useId, useRef, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { calculate, colors, glossary, initial, labels, scoreKeys, scoreNames } from './model';
 import type { Params, ParamKey } from './model';
+import { ExtendedLab } from './ExtendedLab';
 import './style.css';
 
 function Help({ term }: { term: string }) {
@@ -18,23 +19,16 @@ function Help({ term }: { term: string }) {
   return <span className="help-wrap" onBlur={e => { if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false); }} onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}><button type="button" className="help" aria-label={`${term}の説明`} aria-expanded={open} aria-controls={id} onClick={e => { const rect = e.currentTarget.getBoundingClientRect(); setPosition({ left: Math.max(16, Math.min(window.innerWidth - 236, rect.left - 100)), top: Math.max(16, Math.min(window.innerHeight - 160, rect.bottom + 8)) }); setOpen(!open); }}>?</button>{open && <span id={id} role="note" className="tooltip" style={{ position: 'fixed', left: position.left, top: position.top, right: 'auto', width: 220 }}>{glossary[term] || term}</span>}</span>;
 }
 const fmt = (n: number) => Math.round(n);
-const signed = (n: number) => `${n > 0 ? '+' : ''}${n.toFixed(1)}`;
 function App() {
   const [params, setParams] = useState<Params>({ ...initial });
-  const [before, setBefore] = useState<Params | null>(null);
-  const [changeLabel, setChangeLabel] = useState('');
-  const gesture = useRef(false);
-  const [allRules, setAllRules] = useState(false);
   const result = calculate(params);
-  const previous = before ? calculate(before) : null;
   const winner = result.ranked[0];
-  function begin(key: ParamKey) { gesture.current = true; setBefore({ ...params }); setChangeLabel(labels[key]); }
-  function change(key: ParamKey, value: number) { if (!gesture.current) { setBefore({ ...params }); setChangeLabel(labels[key]); } setParams(p => ({ ...p, [key]: value })); }
-  function reset() { setBefore({ ...params }); setChangeLabel('初期状態に戻す'); setParams({ ...initial }); gesture.current = false; }
+  function change(key: ParamKey, value: number) { setParams(p => ({ ...p, [key]: value })); }
+  function reset() { setParams({ ...initial }); }
   function slider(key: ParamKey, green = false) {
     return <div className={`control ${green ? 'green' : ''}`} key={key}>
       <div className="control-label"><label htmlFor={key}>{labels[key]}</label><Help term={labels[key]} /><output htmlFor={key}>{params[key]}</output></div>
-      <input id={key} type="range" min="0" max="100" value={params[key]} style={{ '--fill': `${params[key]}%` } as React.CSSProperties} onPointerDown={() => begin(key)} onPointerUp={() => { gesture.current = false; }} onPointerCancel={() => { gesture.current = false; }} onKeyDown={e => { if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown'].includes(e.key) && !gesture.current) begin(key); }} onKeyUp={() => { gesture.current = false; }} onBlur={() => { gesture.current = false; }} onChange={e => change(key, Number(e.target.value))} />
+      <input id={key} type="range" min="0" max="100" value={params[key]} style={{ '--fill': `${params[key]}%` } as React.CSSProperties} onChange={e => change(key, Number(e.target.value))} />
       <div className="range-label"><span>低い</span><span>高い</span></div>
     </div>;
   }
@@ -66,10 +60,9 @@ function App() {
           </div>
         </section>
         <aside className="right-column"><div className="panel results"><div className="panel-heading"><h2><span className="step">03</span> 結果を読み解く</h2><span className="tiny">適合度 / 100</span></div><div className="results-body"><div className="score-list">{scoreKeys.map((k, i) => <div className={`score-row ${winner === k ? 'leading' : ''}`} key={k} style={{ '--score-color': colors[k] } as React.CSSProperties}><div className="score-row-top"><span className="score-name"><span className="shape">{['●', '◆', '■'][i]}</span>{scoreNames[k]}<Help term={scoreNames[k]}/></span><strong data-testid={k}>{fmt(result.scores[k])}</strong></div><div className="score-track"><div style={{ width: `${result.scores[k]}%` }}/></div></div>)}</div><p className="score-note">独立した適合度です。合計は100になりません。</p><div className="why"><div className="eyebrow">WHY THIS RESULT?</div><h3>現在は<span style={{ color: colors[winner] }}>{scoreNames[winner]}</span>が<br/>最も有力です</h3>{result.scores[winner] - result.scores[result.ranked[1]] < 8 && <p className="close-note">{scoreNames[result.ranked[1]]}も近い適合度です。複数の選択肢を比較しましょう。</p>}<ul>{result.strongest.filter(r => r.strength > .08).slice(0, 3).map(r => <li key={r.name}>{r.reason}</li>)}{params.assetSpecificity >= 55 && params.opportunism < 55 && <li>資産特殊性は高いものの、機会主義は{params.opportunism}。統合を必須とせず、長期契約や継続的な関係で投資を守る余地があります。</li>}{winner === 'marketScore' && <li>総合的な契約リスクが比較的小さく、組織化の費用を抑えられる市場の適合度が高くなっています。</li>}</ul></div><div className="candidates"><h3>具体的なガバナンス <span>TOP 3</span></h3>{result.candidates.map((c, index) => <div className="candidate" key={c.name}><span className="rank">0{index + 1}</span><div><strong>{c.name}{glossary[c.name] && <Help term={c.name}/>}</strong><p>{c.description}</p><span className="family-tag" style={{ color: colors[c.family] }}>{scoreNames[c.family]}</span></div></div>)}<p className="small-note">形態候補も教育用の例示です。業種・法制度などは別途検討が必要です。</p></div></div></div>
-          <div className="panel difference"><div className="panel-heading"><h2>↔ 変更前と変更後</h2></div><div className="difference-body">{before && previous ? <><div className="difference-title">{changeLabel}</div><div className="changed-inputs">{(Object.keys(params) as ParamKey[]).filter(k => before[k] !== params[k]).map(k => <div key={k}><span>{labels[k]}</span><span>{before[k]} <span className="muted">→</span> <b>{params[k]}</b></span></div>)}</div>{scoreKeys.map(k => { const delta = fmt(result.scores[k]) - fmt(previous.scores[k]); return <div className="diff-row" key={k}><span>{scoreNames[k]}</span><span>{fmt(previous.scores[k])} <span className="muted">→</span> <b>{fmt(result.scores[k])}</b></span><span className={`delta ${delta > 0 ? 'up' : delta < 0 ? 'down' : ''}`}>{delta > 0 ? '↑' : delta < 0 ? '↓' : '−'} {Math.abs(delta)}</span></div>; })}<p className="small-note">スライダーの操作開始時点と比較</p></> : <p className="empty-state">スライダーを操作すると、<br/>ここに変化が表示されます。</p>}</div></div>
         </aside>
       </div>
-      <section className="panel contributions"><div className="panel-heading"><h2><span className="rule-icon">⤨</span> いま強く作用しているルール</h2><button className="text-button" onClick={() => setAllRules(!allRules)}>{allRules ? '上位4件を表示' : '全ルール・計算式を見る'} <span>{allRules ? '−' : '+'}</span></button></div><div className="rule-grid">{(allRules ? result.strongest : result.strongest.slice(0, 4)).map(r => <div className="rule-card" key={r.name}><div className="rule-card-top"><span className="rule-dot"/><span>作用の強さ {fmt(r.strength * 100)}%</span></div><h3>{r.name}</h3><div className="strength-track"><span style={{ width: `${r.strength * 100}%` }}/></div><div className="rule-values">{scoreKeys.map((k, i) => <div key={k}><span>{scoreNames[k]}</span><strong style={{ color: colors[k] }}>{signed(r.effect[i])}</strong></div>)}</div></div>)}</div>{allRules && <div className="formula"><strong>計算方法</strong><p>入力値 ÷ 100 → 相互作用を乗算 → 重みを掛けて加算。基礎点は市場88・ハイブリッド18・ヒエラルキー8。各スコアは基礎点＋全寄与を0〜100に制限します。表示寄与は制限前の値です。</p><p>中程度の不確実性 = exp(−((不確実性 / 100 − 0.5) / 0.29)²)。長期契約の相互作用の強さ = 資産特殊性 / 100 × 中程度の不確実性 × (1 − 0.35 × 機会主義 / 100)。マーカー位置 = 100 × (0.5 × hybridScore² + hierarchyScore²) / (marketScore² + hybridScore² + hierarchyScore²)。候補は各系統のスコアと形態ごとの条件適合を組み合わせて順位付けします。</p></div>}<div className="rules-footnote">各寄与はスコアへの加算ポイント。相互作用では、各入力値を0〜1に正規化して掛け合わせています。</div></section>
+      <ExtendedLab />
       <details className="glossary-panel"><summary>用語ガイド <span>概念の意味を確認する</span></summary><div className="glossary-grid">{Object.entries(glossary).map(([term]) => <span key={term}>{term}<Help term={term}/></span>)}</div></details>
       <footer><span className="footer-mark">TCE Lab</span><p>数値・重みは、取引コスト経済学の関係を操作可能にするための教育用モデルです。理論自体が数値的決定式を提示しているわけではありません。</p><a href="https://www.nobelprize.org/prizes/economics/2009/williamson/lecture/" target="_blank" rel="noreferrer">理論の参考：Williamson, Nobel Lecture ↗</a></footer>
     </main>

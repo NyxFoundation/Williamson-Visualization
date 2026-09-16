@@ -1,7 +1,7 @@
 export type Params = { uncertainty: number; smallNumbers: number; assetSpecificity: number; frequency: number; boundedRationality: number; opportunism: number };
 export type ParamKey = keyof Params;
 export const labels: Record<ParamKey, string> = { uncertainty: '不確実性', smallNumbers: '少数性', assetSpecificity: '資産特殊性', frequency: '取引頻度', boundedRationality: '限定合理性', opportunism: '機会主義' };
-export const initial: Params = { uncertainty: 55, smallNumbers: 50, assetSpecificity: 65, frequency: 75, boundedRationality: 65, opportunism: 40 };
+export const initial: Params = { uncertainty: 0, smallNumbers: 0, assetSpecificity: 100, frequency: 0, boundedRationality: 100, opportunism: 100 };
 export type Scores = { marketScore: number; hybridScore: number; hierarchyScore: number };
 export type ScoreKey = keyof Scores;
 export const scoreKeys: ScoreKey[] = ['marketScore', 'hybridScore', 'hierarchyScore'];
@@ -61,6 +61,9 @@ export const glossary: Record<string, string> = {
   市場: '独立した主体が価格と競争を通じて取引を調整する仕組み。',
   ハイブリッド: '主体の独立性を保ちつつ、長期契約や共同調整を用いる中間的な仕組み。',
   ヒエラルキー: '取引を組織内に取り込み、権限や管理を通じて調整する仕組み。',
+  Codifiability: '製品・サービス、引渡し、決済などの要件を、関係者が理解できる電子形式で精密に記述できる程度。',
+  Verifiability: '当事者が提供した品質や履行を、取引後に観察して確かめられる程度。',
+  ブロックチェーン: 'プロトコルとコード化されたルールを、分散型ネットワークが記録・検証し自動執行するガバナンス。',
   長期契約: '一定期間の継続取引と条件を定め、投資と関係を保護する契約。',
   関係的契約: '明文化した条件に加え、信頼・慣行・継続の期待によって運用される契約。',
   双務的ガバナンス: '独立した二者が関係を維持しながら、共同で適応・紛争解決を行う仕組み。',
